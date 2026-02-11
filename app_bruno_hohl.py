@@ -51,4 +51,118 @@ perguntas_fase1 = [
     {"id": 15, "tag_A": "L1", "tag_B": "L7", "frase_A": "Trabalho duro para construir uma base financeira que garanta tranquilidade para mim e minha família.", "frase_B": "Trabalho duro para deixar uma marca positiva no mundo, muito além do meu círculo familiar."},
     {"id": 16, "tag_A": "L2", "tag_B": "L5", "frase_A": "Valorizo muito manter um ambiente agradável e me adaptar para atender às necessidades das pessoas.", "frase_B": "Valorizo muito ser fiel ao que acredito, mesmo que isso signifique discordar do grupo."},
     {"id": 17, "tag_A": "L3", "tag_B": "L6", "frase_A": "Sinto que o progresso real vem de focar em superar meus próprios limites e alcançar a excelência.", "frase_B": "Sinto que o progresso real vem de atuar como um facilitador e criar oportunidades para o grupo."},
-    {"id": 18, "tag_A": "L4", "tag_B": "L7", "frase_A": "Invisto a maior parte da minha energia em aprender coisas novas e
+    {"id": 18, "tag_A": "L4", "tag_B": "L7", "frase_A": "Invisto a maior parte da minha energia em aprender coisas novas e aprimorar minhas próprias habilidades.", "frase_B": "Invisto a maior parte da minha energia em causas que possam gerar um benefício duradouro para a sociedade."},
+    {"id": 19, "tag_A": "E3", "tag_B": "L5", "frase_A": "Para mim, é fundamental construir uma imagem profissional forte e ser reconhecido como autoridade.", "frase_B": "Para mim, é fundamental sentir que meu trabalho tem um significado real, independente do reconhecimento."},
+    {"id": 20, "tag_A": "E1", "tag_B": "L2", "frase_A": "Prefiro poupar e acumular recursos financeiros como uma reserva de segurança rigorosa para o meu futuro.", "frase_B": "Prefiro utilizar parte dos meus recursos financeiros para fortalecer laços com as pessoas importantes."},
+    {"id": 21, "tag_A": "L4", "tag_B": "L6", "frase_A": "Sinto-me mais motivado quando estou resolvendo problemas complexos e descobrindo formas inteligentes de trabalhar.", "frase_B": "Sinto-me mais motivado quando estou desenvolvendo soluções em parceria para gerar impacto positivo."}
+]
+
+cenarios_fase2 = {
+    "N1": "N1 - Fundações Fortes", "N2": "N2 - Conexões Profundas", "N3": "N3 - Alta Performance",
+    "N4": "N4 - Liberdade e Reinvenção", "N5": "N5 - Autenticidade e Significado", 
+    "N6": "N6 - Mentoria e Alianças", "N7": "N7 - Legado e Serviço"
+}
+
+escala_opcoes = ["Totalmente A", "Muito A", "Levemente A", "Levemente B", "Muito B", "Totalmente B"]
+pontos_A, pontos_B = [5, 4, 3, 2, 1, 0], [0, 1, 2, 3, 4, 5]
+
+# ==========================================
+# 3. ESTADO E LÓGICA
+# ==========================================
+if 'etapa' not in st.session_state: st.session_state.etapa = 0
+if 'respostas_fase1' not in st.session_state: st.session_state.respostas_fase1 = {}
+if 'respostas_fase2' not in st.session_state: st.session_state.respostas_fase2 = {k: 0 for k in cenarios_fase2.keys()}
+if 'dados_cliente' not in st.session_state: st.session_state.dados_cliente = {"nome": "", "email": ""}
+
+def avancar(): st.session_state.etapa += 1
+def reiniciar():
+    st.session_state.etapa = 0
+    st.session_state.respostas_fase1 = {}
+    st.session_state.respostas_fase2 = {k: 0 for k in cenarios_fase2.keys()}
+    st.session_state.dados_cliente = {"nome": "", "email": ""}
+
+# ==========================================
+# 4. SALVAMENTO
+# ==========================================
+def salvar_dados_gsheets(nome, email, scores, moedas, indices):
+    try:
+        sd = dict(st.secrets["connections"]["gsheets"])
+        if "private_key" in sd: sd["private_key"] = sd["private_key"].replace("\\n", "\n")
+        creds = Credentials.from_service_account_info(sd, scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"])
+        client = gspread.authorize(creds)
+        sheet = client.open_by_url(st.secrets["connections"]["gsheets"]["spreadsheet"]).sheet1
+        nova_linha = [datetime.now().strftime("%Y-%m-%d %H:%M:%S"), nome, email, f"{indices['ep']:.1f}%", f"{indices['ps']:.0f}%", f"{indices['cf']:.2f}", indices['maior_medo'], str(indices['zeros']), str(indices['top3'])]
+        sheet.append_row(nova_linha)
+        return True
+    except Exception: traceback.print_exc(); return False
+
+# ==========================================
+# 5. INTERFACE
+# ==========================================
+with st.sidebar:
+    st.markdown("<h1 style='color:#FF8000; font-size:24px;'>BRUNO HOHL</h1>", unsafe_allow_html=True)
+    st.divider()
+    if st.session_state.etapa > 0:
+        st.write(f"**CLIENTE:** {st.session_state.dados_cliente['nome']}")
+        if st.button("REINICIAR"): reiniciar(); st.rerun()
+
+if st.session_state.etapa == 0:
+    st.markdown("<h1 style='text-align: center;'>RADIOGRAFIA DO MOMENTO</h1>", unsafe_allow_html=True)
+    c1, c2, c3 = st.columns([1, 1.5, 1])
+    with c2:
+        with st.form("login"):
+            n, e = st.text_input("NOME COMPLETO"), st.text_input("E-MAIL")
+            if st.form_submit_button("COMEÇAR"):
+                if n and e: st.session_state.dados_cliente = {"nome": n, "email": e}; avancar(); st.rerun()
+
+elif st.session_state.etapa == 1:
+    st.markdown("<h2>FASE 1: TENSÕES</h2>", unsafe_allow_html=True)
+    st.progress(0.33)
+    for p in perguntas_fase1:
+        st.markdown(f"<div class='question-card'><b>ITEM {p['id']}</b>", unsafe_allow_html=True)
+        ca, cb = st.columns(2)
+        ca.caption(p['frase_A']); cb.caption(p['frase_B'])
+        st.select_slider(" ", options=escala_opcoes, value="Levemente A", key=f"q_{p['id']}", label_visibility="collapsed")
+        st.markdown("</div>", unsafe_allow_html=True)
+    if st.button("PRÓXIMA FASE"):
+        for p in perguntas_fase1: st.session_state.respostas_fase1[p['id']] = st.session_state[f"q_{p['id']}"]
+        avancar(); st.rerun()
+
+elif st.session_state.etapa == 2:
+    st.markdown("<h2>FASE 2: VETOR</h2>", unsafe_allow_html=True)
+    st.progress(0.66)
+    tot, z = sum(st.session_state.respostas_fase2.values()), sum(1 for v in st.session_state.respostas_fase2.values() if v == 0)
+    st.markdown(f"Fichas: **{10-tot}** | Zeros: **{z}/3**")
+    for k, lbl in cenarios_fase2.items():
+        st.session_state.respostas_fase2[k] = st.number_input(lbl, 0, 10, st.session_state.respostas_fase2[k], key=f"f2_{k}")
+    if tot == 10 and z >= 3:
+        if st.button("ANALISAR"): avancar(); st.rerun()
+
+elif st.session_state.etapa == 3:
+    sc = {"L1":0, "L2":0, "L3":0, "L4":0, "L5":0, "L6":0, "L7":0, "E1":0, "E2":0, "E3":0}
+    for p in perguntas_fase1:
+        idx = escala_opcoes.index(st.session_state.respostas_fase1[p['id']])
+        sc[p['tag_A']] += pontos_A[idx]; sc[p['tag_B']] += pontos_B[idx]
+    ep, m = (sum([sc['E1'],sc['E2'],sc['E3']])/105)*100, st.session_state.respostas_fase2
+    ps = (sum([m['N4'],m['N5'],m['N6'],m['N7']])/10)*100
+    cf = (sum([sc['L1'],sc['L2'],sc['L3']])/3) / ((sum([m['N5'],m['N6'],m['N7']])/3)*10.5) if sum([m['N5'],m['N6'],m['N7']]) > 0 else 99.9
+    
+    st.markdown("<h2 style='text-align: center;'>MASTER ANALYSIS</h2>", unsafe_allow_html=True)
+    k1, k2, k3 = st.columns(3)
+    k1.metric("ENTROPIA", f"{ep:.1f}%"); k2.metric("PRONTIDÃO", f"{ps:.0f}%"); k3.metric("SUSTENTABILIDADE", f"{cf:.2f}")
+    
+    levels = ['N7', 'N6', 'N5', 'N4', 'N3', 'N2', 'N1']
+    v_at = [sc['L7'], sc['L6'], sc['L5'], sc['L4'], sc['L3'], sc['L2'], sc['L1']]
+    v_fu = [m['N7']*3.5, m['N6']*3.5, m['N5']*3.5, m['N4']*3.5, m['N3']*3.5, m['N2']*3.5, m['N1']*3.5]
+    fig = go.Figure()
+    fig.add_trace(go.Bar(y=levels, x=v_at, name='ATUAL', orientation='h', marker_color='#333333'))
+    fig.add_trace(go.Bar(y=levels, x=v_fu, name='DESEJO', orientation='h', marker_color='#FF8000'))
+    fig.update_layout(template='plotly_dark', barmode='group', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+    st.plotly_chart(fig, use_container_width=True)
+
+    if st.button("SALVAR"):
+        t3 = ", ".join([f"{cenarios_fase2[k]} ({v})" for k,v in sorted(m.items(), key=lambda x:x[1], reverse=True)[:3]])
+        z_tx = ", ".join([cenarios_fase2[k] for k,v in m.items() if v == 0])
+        if salvar_dados_gsheets(st.session_state.dados_cliente['nome'], st.session_state.dados_cliente['email'], sc, m, {"ep": ep, "ps": ps, "cf": cf, "maior_medo": "N/A", "zeros": z_tx, "top3": t3}):
+            st.success("SINCRONIZADO.")
+# FIM DO CODIGO COMPLETO
