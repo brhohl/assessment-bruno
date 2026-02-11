@@ -84,9 +84,12 @@ def reiniciar():
 # ==========================================
 # FUNÇÃO DE SALVAMENTO (GOOGLE SHEETS)
 # ==========================================
+# ==========================================
+# FUNÇÃO DE SALVAMENTO (CORRIGIDA)
+# ==========================================
 def salvar_dados(nome, email, scores, moedas, indices):
     try:
-        # Prepara a linha de dados
+        # 1. Prepara a linha de dados nova
         dados_novos = pd.DataFrame([{
             "Data": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "Nome": nome,
@@ -99,20 +102,28 @@ def salvar_dados(nome, email, scores, moedas, indices):
             "Top_Apostas": str(indices['top3'])
         }])
         
-        # Conecta e atualiza
+        # 2. Conecta à planilha
         conn = st.connection("gsheets", type=GSheetsConnection)
         
-        # Tenta ler a planilha existente. Se estiver vazia, cria um novo DF.
+        # 3. Lê os dados existentes SEM CACHE (ttl=0 é o segredo)
+        # Isso força o app a olhar a planilha real agora, com os cabeçalhos que você criou.
         try:
-            dados_existentes = conn.read()
-            df_final = pd.concat([dados_existentes, dados_novos], ignore_index=True)
+            dados_existentes = conn.read(ttl=0)
+            # Se a planilha voltar vazia (só headers), o pandas pode reclamar, então tratamos isso:
+            if dados_existentes.empty:
+                df_final = dados_novos
+            else:
+                df_final = pd.concat([dados_existentes, dados_novos], ignore_index=True)
         except Exception:
+            # Se der erro na leitura, assume que é a primeira linha
             df_final = dados_novos
             
+        # 4. Atualiza a planilha
         conn.update(data=df_final)
         return True
+        
     except Exception as e:
-        st.error(f"Erro ao salvar na planilha. Verifique se o e-mail do robô foi adicionado como Editor no Google Sheets. Detalhe: {e}")
+        st.error(f"Erro ao salvar. Tente recarregar a página. Detalhe técnico: {e}")
         return False
 
 # ==========================================
