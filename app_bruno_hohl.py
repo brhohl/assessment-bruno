@@ -84,33 +84,36 @@ def reiniciar():
     st.session_state.dados_cliente = {"nome": "", "email": ""}
 
 # ==========================================
-# FUNÇÃO DE SALVAMENTO (MODO DIRETO / GSPREAD)
+# FUNÇÃO DE SALVAMENTO (SIMPLIFICADA)
 # ==========================================
 def salvar_dados(nome, email, scores, moedas, indices):
     try:
-        # 1. Carrega as credenciais direto dos segredos
-        # O Streamlit já tem isso salvo, só precisamos formatar para o Google aceitar
+        # 1. Carrega as credenciais
+        # Converte o objeto de segredos do Streamlit para um dicionário Python normal
         secrets_dict = dict(st.secrets["connections"]["gsheets"])
         
-        # Correção de segurança para a chave privada (caso tenha vindo com quebras de linha escapadas)
+        # 2. Limpeza da Chave Privada (Correção crítica de formatação)
+        # O TOML às vezes bagunça as quebras de linha (\n), isso corrige:
         if "private_key" in secrets_dict:
             secrets_dict["private_key"] = secrets_dict["private_key"].replace("\\n", "\n")
 
-        # 2. Define as permissões (Escopos)
+        # 3. Autenticação Direta (Modo Piloto Automático)
+        # Define os escopos necessários automaticamente
         scopes = [
             "https://www.googleapis.com/auth/spreadsheets",
             "https://www.googleapis.com/auth/drive"
         ]
         
-        # 3. Autentica com o Google
+        # Cria as credenciais manualmente para garantir que os escopos entrem
         creds = Credentials.from_service_account_info(secrets_dict, scopes=scopes)
         client = gspread.authorize(creds)
         
-        # 4. Abre a planilha e seleciona a primeira aba
-        url_planilha = st.secrets["connections"]["gsheets"]["spreadsheet"]
-        sheet = client.open_by_url(url_planilha).sheet1
+        # 4. Acesso à Planilha
+        # Pega o link que você salvou no arquivo de segredos
+        url = st.secrets["connections"]["gsheets"]["spreadsheet"]
+        sheet = client.open_by_url(url).sheet1
         
-        # 5. Prepara a linha de dados
+        # 5. Prepara a linha
         nova_linha = [
             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             nome,
@@ -123,12 +126,15 @@ def salvar_dados(nome, email, scores, moedas, indices):
             str(indices['top3'])
         ]
         
-        # 6. Adiciona no final (Append)
+        # 6. Salva
         sheet.append_row(nova_linha)
         return True
         
     except Exception as e:
-        st.error(f"Erro ao salvar no Google Sheets: {e}")
+        # Mostra o erro completo na tela para a gente saber o que arrumar
+        st.error(f"Erro detalhado: {e}")
+        # Também imprime no console do desenvolvedor (tela preta)
+        print(f"ERRO CRÍTICO NO GSPREAD: {e}")
         return False
 # ==========================================
 # TELA 0: CADASTRO
