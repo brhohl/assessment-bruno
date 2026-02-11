@@ -87,43 +87,44 @@ def reiniciar():
 # ==========================================
 # FUNÇÃO DE SALVAMENTO (CORRIGIDA)
 # ==========================================
+# ==========================================
+# FUNÇÃO DE SALVAMENTO BLINDADA (SEM PANDAS)
+# ==========================================
 def salvar_dados(nome, email, scores, moedas, indices):
     try:
-        # 1. Prepara a linha de dados nova
-        dados_novos = pd.DataFrame([{
-            "Data": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "Nome": nome,
-            "Email": email,
-            "I_Entropia": f"{indices['ep']:.1f}%",
-            "I_Prontidao": f"{indices['ps']:.0f}%",
-            "I_Sustentabilidade": f"{indices['cf']:.2f}",
-            "Maior_Entropia": indices['maior_medo'],
-            "Renuncias_Zeros": str(indices['zeros']),
-            "Top_Apostas": str(indices['top3'])
-        }])
+        # 1. Prepara os dados em uma lista simples (sem firulas)
+        nova_linha = [
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            nome,
+            email,
+            f"{indices['ep']:.1f}%",
+            f"{indices['ps']:.0f}%",
+            f"{indices['cf']:.2f}",
+            indices['maior_medo'],
+            str(indices['zeros']),
+            str(indices['top3'])
+        ]
         
-        # 2. Conecta à planilha
+        # 2. Conecta ao Google
         conn = st.connection("gsheets", type=GSheetsConnection)
         
-        # 3. Lê os dados existentes SEM CACHE (ttl=0 é o segredo)
-        # Isso força o app a olhar a planilha real agora, com os cabeçalhos que você criou.
-        try:
-            dados_existentes = conn.read(ttl=0)
-            # Se a planilha voltar vazia (só headers), o pandas pode reclamar, então tratamos isso:
-            if dados_existentes.empty:
-                df_final = dados_novos
-            else:
-                df_final = pd.concat([dados_existentes, dados_novos], ignore_index=True)
-        except Exception:
-            # Se der erro na leitura, assume que é a primeira linha
-            df_final = dados_novos
-            
-        # 4. Atualiza a planilha
-        conn.update(data=df_final)
+        # 3. O SEGREDO: Usamos o cliente direto (gspread) para pular a leitura
+        # Pega o link da planilha direto do seu arquivo secrets
+        url_planilha = st.secrets["connections"]["gsheets"]["spreadsheet"]
+        
+        # Abre a planilha pelo link
+        planilha_aberta = conn.client.open_by_url(url_planilha)
+        
+        # Pega a primeira aba (não importa se chama "Sheet1" ou "Página1")
+        primeira_aba = planilha_aberta.sheet1 
+        
+        # 4. Comando direto: "Adicione essa linha no final"
+        primeira_aba.append_row(nova_linha)
+        
         return True
         
     except Exception as e:
-        st.error(f"Erro ao salvar. Tente recarregar a página. Detalhe técnico: {e}")
+        st.error(f"Erro ao salvar. Detalhe técnico: {e}")
         return False
 
 # ==========================================
