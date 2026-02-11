@@ -4,25 +4,66 @@ import plotly.graph_objects as go
 import plotly.express as px
 import gspread
 from google.oauth2.service_account import Credentials
-from streamlit_gsheets import GSheetsConnection
 from datetime import datetime
+import traceback
 
 # ==========================================
-# CONFIGURAÇÃO DA PÁGINA
+# 1. CONFIGURAÇÃO VISUAL (UI/UX)
 # ==========================================
-st.set_page_config(page_title="Bruno Hohl | Assessment", layout="wide", page_icon="🧭")
+st.set_page_config(
+    page_title="Assessment | Bruno Hohl", 
+    layout="wide", 
+    page_icon="🧭",
+    initial_sidebar_state="expanded"
+)
 
-# Estilização CSS para dar ar "Premium"
+# CSS Customizado para visual "Enterprise"
 st.markdown("""
 <style>
-    .metric-card {background-color: #f0f2f6; border-radius: 10px; padding: 20px; text-align: center;}
-    .stProgress > div > div > div > div { background-color: #2E86C1; }
-    h1, h2, h3 { color: #154360; }
+    /* Esconde menu padrão do Streamlit */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
+    /* Estilo dos Cards de Métricas */
+    div[data-testid="stMetric"] {
+        background-color: #f8f9fa;
+        border: 1px solid #e9ecef;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
+    }
+    
+    /* Títulos e Cores */
+    h1, h2, h3 {
+        color: #0f2c45; /* Azul Profundo */
+        font-family: 'Helvetica Neue', sans-serif;
+    }
+    
+    /* Botões Primários */
+    div.stButton > button:first-child {
+        background-color: #0f2c45;
+        color: white;
+        border-radius: 8px;
+        border: none;
+        padding: 10px 25px;
+        font-weight: bold;
+    }
+    div.stButton > button:hover {
+        background-color: #1a4b75;
+        color: white;
+    }
+    
+    /* Ajuste de Padding */
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# BANCO DE DADOS COMPLETO (PERGUNTAS E CENÁRIOS)
+# 2. BANCO DE DADOS (CONTEÚDO)
 # ==========================================
 perguntas_fase1 = [
     {"id": 1, "tag_A": "E1", "tag_B": "L5", "frase_A": "Preciso ter previsibilidade financeira e controle detalhado sobre os processos antes de dar qualquer passo.", "frase_B": "Prefiro agir alinhado ao meu propósito, confiando que os resultados virão se eu for autêntico."},
@@ -49,13 +90,13 @@ perguntas_fase1 = [
 ]
 
 cenarios_fase2 = {
-    "N1": "Fundações Fortes",
-    "N2": "Conexões Profundas",
-    "N3": "Alta Performance",
-    "N4": "Liberdade e Reinvenção",
-    "N5": "Autenticidade e Significado",
-    "N6": "Mentoria e Alianças",
-    "N7": "Legado e Serviço"
+    "N1": "Fundações Fortes (N1)",
+    "N2": "Conexões Profundas (N2)",
+    "N3": "Alta Performance (N3)",
+    "N4": "Liberdade e Reinvenção (N4)",
+    "N5": "Autenticidade e Significado (N5)",
+    "N6": "Mentoria e Alianças (N6)",
+    "N7": "Legado e Serviço (N7)"
 }
 
 escala_opcoes = ["Totalmente A", "Muito A", "Levemente A", "Levemente B", "Muito B", "Totalmente B"]
@@ -63,20 +104,14 @@ pontos_A = [5, 4, 3, 2, 1, 0]
 pontos_B = [0, 1, 2, 3, 4, 5]
 
 # ==========================================
-# GESTÃO DE ESTADO
+# 3. GESTÃO DE ESTADO (SESSION STATE)
 # ==========================================
-if 'etapa' not in st.session_state:
-    st.session_state.etapa = 0
-if 'respostas_fase1' not in st.session_state:
-    st.session_state.respostas_fase1 = {}
-if 'respostas_fase2' not in st.session_state:
-    st.session_state.respostas_fase2 = {k: 0 for k in cenarios_fase2.keys()}
-if 'dados_cliente' not in st.session_state:
-    st.session_state.dados_cliente = {"nome": "", "email": ""}
+if 'etapa' not in st.session_state: st.session_state.etapa = 0
+if 'respostas_fase1' not in st.session_state: st.session_state.respostas_fase1 = {}
+if 'respostas_fase2' not in st.session_state: st.session_state.respostas_fase2 = {k: 0 for k in cenarios_fase2.keys()}
+if 'dados_cliente' not in st.session_state: st.session_state.dados_cliente = {"nome": "", "email": ""}
 
-def avancar():
-    st.session_state.etapa += 1
-
+def avancar(): st.session_state.etapa += 1
 def reiniciar():
     st.session_state.etapa = 0
     st.session_state.respostas_fase1 = {}
@@ -84,36 +119,25 @@ def reiniciar():
     st.session_state.dados_cliente = {"nome": "", "email": ""}
 
 # ==========================================
-# FUNÇÃO DE SALVAMENTO (SIMPLIFICADA)
+# 4. FUNÇÃO DE SALVAMENTO (GOOGLE SHEETS)
 # ==========================================
-def salvar_dados(nome, email, scores, moedas, indices):
+def salvar_dados_gsheets(nome, email, scores, moedas, indices):
     try:
-        # 1. Carrega as credenciais
-        # Converte o objeto de segredos do Streamlit para um dicionário Python normal
+        # Carrega Segredos
         secrets_dict = dict(st.secrets["connections"]["gsheets"])
-        
-        # 2. Limpeza da Chave Privada (Correção crítica de formatação)
-        # O TOML às vezes bagunça as quebras de linha (\n), isso corrige:
         if "private_key" in secrets_dict:
             secrets_dict["private_key"] = secrets_dict["private_key"].replace("\\n", "\n")
 
-        # 3. Autenticação Direta (Modo Piloto Automático)
-        # Define os escopos necessários automaticamente
-        scopes = [
-            "https://www.googleapis.com/auth/spreadsheets",
-            "https://www.googleapis.com/auth/drive"
-        ]
-        
-        # Cria as credenciais manualmente para garantir que os escopos entrem
+        # Autenticação
+        scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
         creds = Credentials.from_service_account_info(secrets_dict, scopes=scopes)
         client = gspread.authorize(creds)
         
-        # 4. Acesso à Planilha
-        # Pega o link que você salvou no arquivo de segredos
+        # Conexão
         url = st.secrets["connections"]["gsheets"]["spreadsheet"]
         sheet = client.open_by_url(url).sheet1
         
-        # 5. Prepara a linha
+        # Dados
         nova_linha = [
             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             nome,
@@ -126,108 +150,153 @@ def salvar_dados(nome, email, scores, moedas, indices):
             str(indices['top3'])
         ]
         
-        # 6. Salva
         sheet.append_row(nova_linha)
         return True
         
-    except Exception as e:
-        # Mostra o erro completo na tela para a gente saber o que arrumar
-        st.error(f"Erro detalhado: {e}")
-        # Também imprime no console do desenvolvedor (tela preta)
-        print(f"ERRO CRÍTICO NO GSPREAD: {e}")
+    except Exception:
+        # Log silencioso ou print no console para debug
+        traceback.print_exc()
         return False
-# ==========================================
-# TELA 0: CADASTRO
-# ==========================================
-if st.session_state.etapa == 0:
-    st.title("🧭 Assessment de Consciência | Método Bruno Hohl")
-    st.markdown("### Bem-vindo à Radiografia do Momento")
-    st.info("Este sistema mapeia onde sua energia reside hoje e para onde ela pede para ir. O processo leva cerca de 8 minutos.")
-    
-    with st.form("cadastro"):
-        st.markdown("**Identifique-se para iniciar:**")
-        nome = st.text_input("Seu Nome Completo")
-        email = st.text_input("Seu E-mail")
-        submitted = st.form_submit_button("Iniciar Diagnóstico", type="primary")
-        
-        if submitted:
-            if nome and email:
-                st.session_state.dados_cliente = {"nome": nome, "email": email}
-                avancar()
-                st.rerun()
-            else:
-                st.warning("Por favor, preencha nome e e-mail.")
 
 # ==========================================
-# TELA 1: FASE 1 (TENSÕES)
+# 5. BARRA LATERAL (SIDEBAR)
 # ==========================================
+with st.sidebar:
+    st.image("https://cdn-icons-png.flaticon.com/512/1903/1903902.png", width=50) # Placeholder Logo
+    st.markdown("### Método Bruno Hohl")
+    st.divider()
+    
+    if st.session_state.etapa > 0:
+        st.write(f"👤 **Cliente:** {st.session_state.dados_cliente['nome']}")
+        
+        # Barra de Progresso Geral
+        progresso_geral = 0
+        if st.session_state.etapa == 1: progresso_geral = 33
+        elif st.session_state.etapa == 2: progresso_geral = 66
+        elif st.session_state.etapa == 3: progresso_geral = 100
+        
+        st.write("Progresso:")
+        st.progress(progresso_geral)
+    else:
+        st.info("Bem-vindo ao diagnóstico de consciência.")
+
+# ==========================================
+# 6. INTERFACE PRINCIPAL
+# ==========================================
+
+# --- TELA 0: LOGIN ---
+if st.session_state.etapa == 0:
+    st.title("🧭 Radiografia do Momento")
+    st.markdown("""
+    Este diagnóstico mapeia onde sua energia mental e emocional está alocada hoje e identifica
+    os vetores de crescimento para o seu próximo ciclo.
+    
+    * **Tempo estimado:** 8 minutos
+    * **Confidencialidade:** Seus dados são restritos ao seu Coach.
+    """)
+    
+    with st.container():
+        st.markdown("---")
+        c1, c2 = st.columns([1, 2])
+        with c1:
+            st.write("") # Espaço
+        with c2:
+            with st.form("login_form"):
+                nome = st.text_input("Nome Completo")
+                email = st.text_input("E-mail")
+                submitted = st.form_submit_button("Iniciar Sessão ➤", type="primary")
+                
+                if submitted:
+                    if nome and email:
+                        st.session_state.dados_cliente = {"nome": nome, "email": email}
+                        avancar()
+                        st.rerun()
+                    else:
+                        st.error("Por favor, preencha todos os campos.")
+
+# --- TELA 1: FASE 1 ---
 elif st.session_state.etapa == 1:
-    st.title("Fase 1: Inventário de Tensões")
-    st.progress(33)
-    st.write(f"Olá, **{st.session_state.dados_cliente['nome']}**. Mova o seletor em direção à frase que melhor descreve sua vida **hoje**.")
+    st.subheader("Fase 1: Inventário de Tensões")
+    st.markdown("Mova o seletor para o lado que melhor representa sua **realidade atual** (não o que você gostaria que fosse).")
+    st.divider()
     
     todas_respondidas = True
     
+    # Loop de Perguntas com Layout Melhorado
     for p in perguntas_fase1:
-        st.markdown(f"**Item {p['id']}**")
-        c1, c2 = st.columns(2)
-        with c1: st.caption(p['frase_A'])
-        with c2: st.caption(p['frase_B'], unsafe_allow_html=True) 
+        st.markdown(f"**Questão {p['id']}**")
         
-        # Slider
-        resp = st.select_slider(
-            f"Par {p['id']}", 
-            options=escala_opcoes, 
-            key=f"q_{p['id']}", 
-            label_visibility="collapsed"
+        # Colunas para as frases (Mobile Friendly)
+        col_esq, col_dir = st.columns(2)
+        with col_esq:
+            st.info(p['frase_A'])
+        with col_dir:
+            st.success(p['frase_B'])
+            
+        # Slider Centralizado
+        val = st.select_slider(
+            label=f"q_{p['id']}",
+            options=escala_opcoes,
+            value=st.session_state.respostas_fase1.get(p['id'], "Levemente A"), # Default neutro visual
+            label_visibility="collapsed",
+            key=f"slider_{p['id']}"
         )
-        
-        if resp is None: 
-            todas_respondidas = False
-        else: 
-            st.session_state.respostas_fase1[p['id']] = resp
-        st.divider()
-        
-    if st.button("Avançar para Fase 2", type="primary"):
+        st.session_state.respostas_fase1[p['id']] = val
+        st.markdown("---")
+
+    if st.button("Salvar e Avançar para Fase 2 ➤", type="primary"):
         avancar()
         st.rerun()
 
-# ==========================================
-# TELA 2: FASE 2 (MOEDAS)
-# ==========================================
+# --- TELA 2: FASE 2 ---
 elif st.session_state.etapa == 2:
-    st.title("Fase 2: Vetor de Crescimento")
-    st.progress(66)
-    st.info("Você tem 10 Fichas de Energia para investir nos próximos 2 anos. **Regra:** Você deve deixar pelo menos 3 cenários com ZERO fichas.")
+    st.subheader("Fase 2: Vetor de Crescimento")
+    st.markdown("""
+    Você tem **10 Fichas de Energia** para investir nos próximos 2 anos.
     
-    # Inputs numéricos
-    for k, v in cenarios_fase2.items():
-        st.session_state.respostas_fase2[k] = st.number_input(f"{v}", 0, 10, st.session_state.respostas_fase2[k], key=k)
-
-    # Validação em tempo real
-    total = sum(st.session_state.respostas_fase2.values())
-    restantes = 10 - total
+    ⚠️ **Regra da Renúncia:** Para avançar, você deve deixar **pelo menos 3 cenários com ZERO fichas**.
+    """)
+    st.divider()
+    
+    # Controle de Moedas (Sticky Header Simulada)
+    total_usado = sum(st.session_state.respostas_fase2.values())
+    restantes = 10 - total_usado
     zeros = sum(1 for v in st.session_state.respostas_fase2.values() if v == 0)
     
-    c_metrica1, c_metrica2 = st.columns(2)
-    c_metrica1.metric("Fichas Disponíveis", restantes, delta_color="normal" if restantes == 0 else "inverse")
-    c_metrica2.metric("Cenários Zerados (Mín 3)", zeros, delta_color="normal" if zeros >=3 else "inverse")
+    kpi1, kpi2, kpi3 = st.columns(3)
+    kpi1.metric("Fichas Totais", "10")
+    kpi2.metric("Disponíveis", f"{restantes}", delta_color="normal" if restantes == 0 else "inverse")
+    kpi3.metric("Renúncias (Zeros)", f"{zeros}/3", delta_color="normal" if zeros >=3 else "inverse")
+    
+    st.markdown("### Distribua suas fichas:")
+    
+    # Inputs
+    for k, desc in cenarios_fase2.items():
+        val = st.number_input(
+            f"{desc}", 
+            min_value=0, 
+            max_value=10, 
+            value=st.session_state.respostas_fase2[k],
+            key=f"num_{k}"
+        )
+        st.session_state.respostas_fase2[k] = val
 
-    if restantes == 0 and zeros >= 3:
-        st.success("Configuração válida. Pronto para gerar a análise.")
-        if st.button("Gerar Dashboard do Coach", type="primary"): 
+    st.markdown("---")
+    
+    # Validação
+    valido = (restantes == 0) and (zeros >= 3)
+    
+    if valido:
+        st.success("✅ Distribuição válida!")
+        if st.button("Gerar Análise Final ➤", type="primary"):
             avancar()
             st.rerun()
     else:
-        st.warning(f"Ajuste suas fichas. Faltam alocar: {restantes} | Zeros atuais: {zeros}")
+        st.warning(f"Ajuste pendente: Fichas sobrando ({restantes}) ou Zeros insuficientes ({zeros}).")
 
-# ==========================================
-# TELA 3: DASHBOARD DO COACH (FINAL)
-# ==========================================
+# --- TELA 3: DASHBOARD ---
 elif st.session_state.etapa == 3:
-    st.progress(100)
-    
-    # --- PROCESSAMENTO DOS DADOS ---
+    # Cálculos (Engine)
     scores = {"L1":0, "L2":0, "L3":0, "L4":0, "L5":0, "L6":0, "L7":0, "E1":0, "E2":0, "E3":0}
     for p in perguntas_fase1:
         if p['id'] in st.session_state.respostas_fase1:
@@ -235,7 +304,6 @@ elif st.session_state.etapa == 3:
             scores[p['tag_A']] += pontos_A[idx]
             scores[p['tag_B']] += pontos_B[idx]
 
-    # Cálculo dos Índices
     total_fase1 = 105
     soma_entropia = scores['E1'] + scores['E2'] + scores['E3']
     i_ep = (soma_entropia / total_fase1) * 100
@@ -248,107 +316,114 @@ elif st.session_state.etapa == 3:
     denominador = (avg_topo * 10.5)
     i_cf = avg_base / denominador if denominador > 0 else 99.9
 
-    # Diagnósticos de Texto
+    # Textos Dinâmicos
     txt_ep = "Fluxo Livre" if i_ep <= 10 else "Alerta de Atrito" if i_ep <= 25 else "Bloqueio Crítico"
-    
     txt_ps = "Manutenção" if i_ps <= 20 else "Evolução Gradual" if i_ps <= 40 else "Virada de Chave"
+    if i_cf < 0.7: txt_cf = "Frágil (Voo de Ícaro)"
+    elif i_cf <= 1.2: txt_cf = "Sustentável (Fluxo)"
+    else: txt_cf = "Fixação (Gaiola de Ouro)"
     
-    if i_cf < 0.7: txt_cf = "Frágil (Voo de Ícaro)"; help_cf = "Sonho alto, base fraca."
-    elif i_cf <= 1.2: txt_cf = "Sustentável (Fluxo)"; help_cf = "Equilíbrio ideal."
-    else: txt_cf = "Fixação (Gaiola de Ouro)"; help_cf = "Base pesada, pouco crescimento."
-    
-    # Maior Entropia
     max_ent = max(scores['E1'], scores['E2'], scores['E3'])
-    if max_ent == scores['E1']: msg_ent = "E1: Controle/Escassez"
-    elif max_ent == scores['E2']: msg_ent = "E2: Rejeição/Conflito"
-    else: msg_ent = "E3: Status/Fracasso"
+    if max_ent == scores['E1']: msg_ent = "Controle & Escassez"
+    elif max_ent == scores['E2']: msg_ent = "Rejeição & Conflito"
+    else: msg_ent = "Status & Fracasso"
 
-    # --- HEADER DO DASHBOARD ---
-    st.markdown(f"## 🚁 Cockpit de Comando | {st.session_state.dados_cliente['nome']}")
+    # Layout do Dashboard
+    st.subheader(f"Dashboard Executivo: {st.session_state.dados_cliente['nome']}")
+    st.caption("Visão exclusiva do Coach")
     st.markdown("---")
 
-    # 1. OS TRÊS ÍNDICES VITAIS
+    # 1. KPIs Principais
     col1, col2, col3 = st.columns(3)
-    col1.metric("1. Entropia (Ruído)", f"{i_ep:.1f}%", txt_ep)
-    col2.metric("2. Prontidão (Mudança)", f"{i_ps:.0f}%", txt_ps)
-    col3.metric("3. Sustentabilidade", f"{i_cf:.2f}", txt_cf)
-
+    col1.metric("Entropia (Medo)", f"{i_ep:.1f}%", txt_ep, delta_color="inverse")
+    col2.metric("Prontidão (Mudança)", f"{i_ps:.0f}%", txt_ps)
+    col3.metric("Sustentabilidade", f"{i_cf:.2f}", txt_cf)
+    
     st.markdown("---")
 
-    # 2. A VISUALIZAÇÃO DA AMPULHETA
-    c_chart1, c_chart2 = st.columns([2, 1])
+    # 2. Gráficos (Visual Clean)
+    c1, c2 = st.columns([2, 1])
     
-    with c_chart1:
-        st.subheader("⏳ A Forma da Consciência")
-        st.caption("Comparativo: Realidade Atual (Azul) vs. Desejo Futuro (Verde)")
-        
-        fator_norm = 3.5 
-        levels = ['N7 - Serviço', 'N6 - Colaboração', 'N5 - Alinhamento', 'N4 - Evolução', 'N3 - Performance', 'N2 - Relacionamento', 'N1 - Viabilidade']
-        val_atual = [scores['L7'], scores['L6'], scores['L5'], scores['L4'], scores['L3'], scores['L2'], scores['L1']]
-        val_futuro = [moedas['N7']*fator_norm, moedas['N6']*fator_norm, moedas['N5']*fator_norm, moedas['N4']*fator_norm, moedas['N3']*fator_norm, moedas['N2']*fator_norm, moedas['N1']*fator_norm]
+    with c1:
+        st.markdown("#### ⏳ Ampulheta de Energia")
+        fator = 3.5
+        levels = ['N7 Serviço', 'N6 Colaboração', 'N5 Alinhamento', 'N4 Evolução', 'N3 Performance', 'N2 Relação', 'N1 Viabilidade']
+        v_atual = [scores['L7'], scores['L6'], scores['L5'], scores['L4'], scores['L3'], scores['L2'], scores['L1']]
+        v_futuro = [moedas['N7']*fator, moedas['N6']*fator, moedas['N5']*fator, moedas['N4']*fator, moedas['N3']*fator, moedas['N2']*fator, moedas['N1']*fator]
         
         fig = go.Figure()
-        fig.add_trace(go.Bar(y=levels, x=val_atual, name='Atual', orientation='h', marker=dict(color='#2E86C1')))
-        fig.add_trace(go.Bar(y=levels, x=val_futuro, name='Futuro', orientation='h', marker=dict(color='#27AE60')))
-        fig.update_layout(barmode='group', height=400, margin=dict(l=0, r=0, t=0, b=0))
+        fig.add_trace(go.Bar(
+            y=levels, x=v_atual, name='Atual (L)', orientation='h',
+            marker_color='#2E86C1', opacity=0.8
+        ))
+        fig.add_trace(go.Bar(
+            y=levels, x=v_futuro, name='Futuro (Desejo)', orientation='h',
+            marker_color='#27AE60', opacity=0.8
+        ))
+        fig.update_layout(
+            barmode='group', 
+            height=400, 
+            margin=dict(l=0, r=0, t=0, b=0),
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        )
         st.plotly_chart(fig, use_container_width=True)
 
-    with c_chart2:
-        st.subheader("🌪️ Radar de Medos")
+    with c2:
+        st.markdown("#### 🌪️ Gatilho de Bloqueio")
+        st.error(f"**{msg_ent}**")
+        st.caption("Onde a energia está sendo drenada hoje.")
+        
         df_ent = pd.DataFrame({
             'r': [scores['E1'], scores['E2'], scores['E3'], scores['E1']],
-            'theta': ['E1: Controle', 'E2: Aprovação', 'E3: Status', 'E1: Controle']
+            'theta': ['Controle', 'Aprovação', 'Status', 'Controle']
         })
         fig_radar = px.line_polar(df_ent, r='r', theta='theta', line_close=True)
-        fig_radar.update_traces(fill='toself', line_color='red')
-        fig_radar.update_layout(height=300)
+        fig_radar.update_traces(fill='toself', line_color='#E74C3C')
+        fig_radar.update_layout(
+            height=300,
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)'
+        )
         st.plotly_chart(fig_radar, use_container_width=True)
-        st.error(f"**Bloqueio Principal:** {msg_ent}")
 
+    # 3. Insights Finais
     st.markdown("---")
-
-    # 3. RENÚNCIAS E APOSTAS
-    c_res1, c_res2 = st.columns(2)
-    sorted_moedas = sorted(moedas.items(), key=lambda item: item[1], reverse=True)
-    zeros_list = [cenarios_fase2[k] for k, v in moedas.items() if v == 0]
-    top3_list = [f"{cenarios_fase2[k]} ({v})" for k, v in sorted_moedas[:3]]
+    col_ins1, col_ins2 = st.columns(2)
     
-    with c_res1:
-        st.subheader("🚀 Top 3 Apostas")
-        for item in top3_list:
-            st.success(item)
+    top_apostas = sorted(moedas.items(), key=lambda x: x[1], reverse=True)[:3]
+    top_txt = [f"{cenarios_fase2[k].split('(')[0]} ({v})" for k, v in top_apostas]
+    zeros_txt = [cenarios_fase2[k].split('(')[0] for k, v in moedas.items() if v == 0]
 
-    with c_res2:
-        st.subheader("❌ As Renúncias")
-        for z in zeros_list:
-            st.warning(f"Abriu mão de: **{z}**")
+    with col_ins1:
+        st.info(f"**Apostas Principais:** {', '.join(top_txt)}")
+    with col_ins2:
+        st.warning(f"**Renúncias Conscientes:** {', '.join(zeros_txt)}")
 
-    st.markdown("---")
-    
-    # 4. BOTÃO DE SALVAR
-    st.subheader("📤 Finalizar Sessão")
-    st.info("Envie os dados para a planilha do Coach para encerrar.")
-    
-    if st.button("💾 Salvar Dados e Encerrar", type="primary"):
-        with st.spinner("Salvando na nuvem..."):
+    # Botão Salvar
+    st.markdown("### 💾 Registro")
+    if st.button("Salvar na Base de Dados e Finalizar", type="primary"):
+        with st.spinner("Conectando ao servidor..."):
             indices_save = {
                 "ep": i_ep, "ps": i_ps, "cf": i_cf,
                 "maior_medo": msg_ent,
-                "zeros": ", ".join(zeros_list),
-                "top3": ", ".join(top3_list)
+                "zeros": zeros_txt,
+                "top3": top_txt
             }
-            sucesso = salvar_dados(
+            ok = salvar_dados_gsheets(
                 st.session_state.dados_cliente['nome'],
                 st.session_state.dados_cliente['email'],
                 scores,
                 moedas,
                 indices_save
             )
-            
-            if sucesso:
-                st.success("✅ Dados salvos com sucesso!")
-                st.balloons()
-            
-    if st.button("🔄 Reiniciar (Novo Cliente)"):
+            if ok:
+                st.toast("Sucesso! Dados salvos na nuvem.", icon="☁️")
+                st.success("Sessão finalizada com sucesso.")
+            else:
+                st.error("Erro ao salvar. Verifique a conexão.")
+
+    if st.button("🔄 Iniciar Novo Cliente"):
         reiniciar()
         st.rerun()
