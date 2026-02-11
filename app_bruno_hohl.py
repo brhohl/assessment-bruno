@@ -20,47 +20,14 @@ st.markdown("""
     header {visibility: hidden;}
     [data-testid="stSidebar"] { background-color: #000000; border-right: 1px solid #333333; }
     [data-testid="stSidebar"] * { color: #FFFFFF !important; }
-    
-    /* Card de Questões */
-    .question-card { 
-        background-color: #0a0a0a; 
-        border: 1px solid #222222; 
-        padding: 30px; 
-        border-radius: 8px; 
-        margin-bottom: 25px; 
-    }
-    
-    /* Botões Laranja/Preto */
-    div.stButton > button:first-child { 
-        background-color: #FF8000; 
-        color: #000000; 
-        border-radius: 0px; 
-        border: none; 
-        padding: 0.8rem 3rem; 
-        font-weight: 700; 
-        letter-spacing: 2px; 
-        text-transform: uppercase; 
-        width: 100%; 
-        transition: 0.3s; 
-    }
+    .question-card { background-color: #0a0a0a; border: 1px solid #222222; padding: 30px; border-radius: 8px; margin-bottom: 25px; }
+    div.stButton > button:first-child { background-color: #FF8000; color: #000000; border-radius: 0px; border: none; padding: 0.8rem 3rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; width: 100%; transition: 0.3s; }
     div.stButton > button:hover { background-color: #FFA500; color: #000000; transform: scale(1.02); }
-    
-    /* Métricas e Inputs */
     div[data-testid="stMetric"] { background-color: #0a0a0a; border: 1px solid #333333; padding: 20px !important; border-radius: 4px; }
     label { color: #FFFFFF !important; font-weight: 400 !important; font-size: 1.1rem !important; line-height: 1.4 !important; }
-    
     .stMarkdown p { color: #CCCCCC; }
     h1, h2, h3 { color: #FFFFFF !important; letter-spacing: -1px; }
-    
-    /* Estilo para as descrições da Fase 2 */
-    .fase2-label {
-        font-size: 1.1rem;
-        color: #FFFFFF;
-        margin-bottom: 10px;
-        display: block;
-        border-left: 3px solid #FF8000;
-        padding-left: 15px;
-    }
+    .fase2-label { font-size: 1.1rem; color: #FFFFFF; margin-bottom: 10px; display: block; border-left: 3px solid #FF8000; padding-left: 15px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -91,15 +58,14 @@ perguntas_fase1 = [
     {"id": 21, "tag_A": "L4", "tag_B": "L6", "frase_A": "Sinto-me mais motivado quando estou resolvendo problemas complexos e descobrindo formas inteligentes de trabalhar.", "frase_B": "Sinto-me mais motivado quando estou desenvolvendo soluções em parceria para gerar impacto positivo."}
 ]
 
-# DICIONÁRIO CORRIGIDO COM AS FRASES COMPLETAS
 cenarios_fase2 = {
-    "N1": "Construir uma base material e financeira inabalável, garantindo conforto, saúde física e total tranquilidade estrutural para mim e para o meu futuro, sem sobressaltos.",
-    "N2": "Cultivar relacionamentos de alta qualidade, criando um círculo de confiança absoluta, apoio mútuo e harmonia com as pessoas que amo e com quem convivo.",
-    "N3": "Atingir o nível máximo de excelência na minha área, superando metas desafiadoras e sendo amplamente reconhecido pela qualidade e impacto dos resultados que entrego.",
-    "N4": "Ter total autonomia e liberdade para aprender coisas novas, inovar na forma de viver e me reinventar continuamente, rompendo com a rotina e o status quo.",
-    "N5": "Viver de forma totalmente autêntica, alinhando minhas ações diárias aos meus valores mais profundos e sentindo que o meu trabalho reflete quem eu realmente sou.",
-    "N6": "Atuar como um facilitador do sucesso alheio, construindo alianças poderosas, mentorando pessoas e criando ecossistemas onde todos ganham e crescem juntos.",
-    "N7": "Dedicar minha energia a uma causa maior que eu mesmo, deixando uma marca positiva, ética e duradouro na sociedade para as próximas gerações."
+    "N1": "**Cenário 1: Fundações Fortes (Nível 1 - Viabilidade)**<br><br>\"Construir uma base material e financeira inabalável, garantindo conforto, saúde física e total tranquilidade estrutural para mim e para o meu futuro, sem sobressaltos.\"",
+    "N2": "**Cenário 2: Conexões Profundas (Nível 2 - Relacionamentos)**<br><br>\"Cultivar relacionamentos de alta qualidade, criando um círculo de confiança absoluta, apoio mútuo e harmonia com as pessoas que amo e com quem convivo.\"",
+    "N3": "**Cenário 3: Alta Performance (Nível 3 - Autoestima/Excelência)**<br><br>\"Atingir o nível máximo de excelência na minha área, superando metas desafiadoras e sendo amplamente reconhecido pela qualidade e impacto dos resultados que entrego.\"",
+    "N4": "**Cenário 4: Liberdade e Reinvenção (Nível 4 - Evolução/Transformação)**<br><br>\"Ter total autonomia e liberdade para aprender coisas novas, inovar na forma de viver e me reinventar continuamente, rompendo com a rotina e o status quo.\"",
+    "N5": "**Cenário 5: Autenticidade e Significado (Nível 5 - Propósito Interno)**<br><br>\"Viver de forma totalmente autêntica, alinhando minhas ações diárias aos meus valores mais profundos e sentindo que o meu trabalho reflete quem eu realmente sou.\"",
+    "N6": "**Cenário 6: Mentoria e Alianças (Nível 6 - Colaboração/Impacto na Rede)**<br><br>\"Atuar como um facilitador do sucesso alheio, construindo alianças poderosas, mentorando pessoas e criando ecossistemas onde todos ganham e crescem juntos.\"",
+    "N7": "**Cenário 7: Legado e Serviço (Nível 7 - Contribuição Global)**<br><br>\"Dedicar minha energia a uma causa maior que eu mesmo, deixando uma marca positiva, ética e duradouro na sociedade para as próximas gerações.\""
 }
 
 escala_opcoes = ["Totalmente A", "Muito A", "Levemente A", "Levemente B", "Muito B", "Totalmente B"]
@@ -170,22 +136,25 @@ elif st.session_state.etapa == 2:
     st.markdown("<h2>FASE 2: VETOR DE CRESCIMENTO</h2>", unsafe_allow_html=True)
     st.progress(0.66)
     
+    st.markdown("Distribua exatamente **10 fichas** e deixe pelo menos **3 áreas com zero**.")
+    st.divider()
+
+    # LOOP DA FASE 2
+    for k, frase in cenarios_fase2.items():
+        st.markdown(f"<span class='fase2-label'>{frase}</span>", unsafe_allow_html=True)
+        st.session_state.respostas_fase2[k] = st.number_input(
+            "Fichas:", 0, 10, st.session_state.respostas_fase2[k], key=f"f2_{k}", label_visibility="collapsed"
+        )
+        st.write("")
+
+    # CÁLCULO DAS REGRAS (Movido para depois dos inputs)
     tot = sum(st.session_state.respostas_fase2.values())
     z = sum(1 for v in st.session_state.respostas_fase2.values() if v == 0)
     
-    # Barra Superior de Status
+    # Barra de Status
     c_met1, c_met2 = st.columns(2)
     c_met1.markdown(f"Fichas Disponíveis: <span style='color:#FF8000; font-size: 24px;'>**{10-tot}**</span>", unsafe_allow_html=True)
     c_met2.markdown(f"Áreas com Zero: <span style='color:#FF8000; font-size: 24px;'>**{z}/3**</span>", unsafe_allow_html=True)
-    st.divider()
-
-    # LOOP DA FASE 2 COM FRASES COMPLETAS
-    for k, frase in cenarios_fase2.items():
-        st.markdown(f"<span class='fase2-label'>**Cenário {k[1]}**<br>{frase}</span>", unsafe_allow_html=True)
-        st.session_state.respostas_fase2[k] = st.number_input(
-            "Quantidade de fichas:", 0, 10, st.session_state.respostas_fase2[k], key=f"f2_{k}", label_visibility="collapsed"
-        )
-        st.write("") # Espaçamento entre cenários
 
     if tot == 10 and z >= 3:
         if st.button("ANALISAR RESULTADOS"): avancar(); st.rerun()
