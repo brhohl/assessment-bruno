@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
+import gspread
+from google.oauth2.service_account import Credentials
 from streamlit_gsheets import GSheetsConnection
 from datetime import datetime
 
@@ -82,17 +84,33 @@ def reiniciar():
     st.session_state.dados_cliente = {"nome": "", "email": ""}
 
 # ==========================================
-# FUNÇÃO DE SALVAMENTO (GOOGLE SHEETS)
-# ==========================================
-# ==========================================
-# FUNÇÃO DE SALVAMENTO (CORRIGIDA)
-# ==========================================
-# ==========================================
-# FUNÇÃO DE SALVAMENTO BLINDADA (SEM PANDAS)
+# FUNÇÃO DE SALVAMENTO (MODO DIRETO / GSPREAD)
 # ==========================================
 def salvar_dados(nome, email, scores, moedas, indices):
     try:
-        # 1. Prepara os dados em uma lista simples (sem firulas)
+        # 1. Carrega as credenciais direto dos segredos
+        # O Streamlit já tem isso salvo, só precisamos formatar para o Google aceitar
+        secrets_dict = dict(st.secrets["connections"]["gsheets"])
+        
+        # Correção de segurança para a chave privada (caso tenha vindo com quebras de linha escapadas)
+        if "private_key" in secrets_dict:
+            secrets_dict["private_key"] = secrets_dict["private_key"].replace("\\n", "\n")
+
+        # 2. Define as permissões (Escopos)
+        scopes = [
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive"
+        ]
+        
+        # 3. Autentica com o Google
+        creds = Credentials.from_service_account_info(secrets_dict, scopes=scopes)
+        client = gspread.authorize(creds)
+        
+        # 4. Abre a planilha e seleciona a primeira aba
+        url_planilha = st.secrets["connections"]["gsheets"]["spreadsheet"]
+        sheet = client.open_by_url(url_planilha).sheet1
+        
+        # 5. Prepara a linha de dados
         nova_linha = [
             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             nome,
@@ -105,28 +123,13 @@ def salvar_dados(nome, email, scores, moedas, indices):
             str(indices['top3'])
         ]
         
-        # 2. Conecta ao Google
-        conn = st.connection("gsheets", type=GSheetsConnection)
-        
-        # 3. O SEGREDO: Usamos o cliente direto (gspread) para pular a leitura
-        # Pega o link da planilha direto do seu arquivo secrets
-        url_planilha = st.secrets["connections"]["gsheets"]["spreadsheet"]
-        
-        # Abre a planilha pelo link
-        planilha_aberta = conn.client.open_by_url(url_planilha)
-        
-        # Pega a primeira aba (não importa se chama "Sheet1" ou "Página1")
-        primeira_aba = planilha_aberta.sheet1 
-        
-        # 4. Comando direto: "Adicione essa linha no final"
-        primeira_aba.append_row(nova_linha)
-        
+        # 6. Adiciona no final (Append)
+        sheet.append_row(nova_linha)
         return True
         
     except Exception as e:
-        st.error(f"Erro ao salvar. Detalhe técnico: {e}")
+        st.error(f"Erro ao salvar no Google Sheets: {e}")
         return False
-
 # ==========================================
 # TELA 0: CADASTRO
 # ==========================================
