@@ -20,18 +20,52 @@ st.markdown("""
     header {visibility: hidden;}
     [data-testid="stSidebar"] { background-color: #000000; border-right: 1px solid #333333; }
     [data-testid="stSidebar"] * { color: #FFFFFF !important; }
-    .question-card { background-color: #0a0a0a; border: 1px solid #222222; padding: 30px; border-radius: 8px; margin-bottom: 25px; }
-    div.stButton > button:first-child { background-color: #FF8000; color: #000000; border-radius: 0px; border: none; padding: 0.8rem 3rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; width: 100%; transition: 0.3s; }
+    
+    /* Card de Questões */
+    .question-card { 
+        background-color: #0a0a0a; 
+        border: 1px solid #222222; 
+        padding: 30px; 
+        border-radius: 8px; 
+        margin-bottom: 25px; 
+    }
+    
+    /* Botões Laranja/Preto */
+    div.stButton > button:first-child { 
+        background-color: #FF8000; 
+        color: #000000; 
+        border-radius: 0px; 
+        border: none; 
+        padding: 0.8rem 3rem; 
+        font-weight: 700; 
+        letter-spacing: 2px; 
+        text-transform: uppercase; 
+        width: 100%; 
+        transition: 0.3s; 
+    }
     div.stButton > button:hover { background-color: #FFA500; color: #000000; transform: scale(1.02); }
+    
+    /* Métricas e Inputs */
     div[data-testid="stMetric"] { background-color: #0a0a0a; border: 1px solid #333333; padding: 20px !important; border-radius: 4px; }
-    label { color: #FFFFFF !important; font-weight: 600 !important; font-size: 1.1rem !important; }
+    label { color: #FFFFFF !important; font-weight: 400 !important; font-size: 1.1rem !important; line-height: 1.4 !important; }
+    
     .stMarkdown p { color: #CCCCCC; }
     h1, h2, h3 { color: #FFFFFF !important; letter-spacing: -1px; }
+    
+    /* Estilo para as descrições da Fase 2 */
+    .fase2-label {
+        font-size: 1.1rem;
+        color: #FFFFFF;
+        margin-bottom: 10px;
+        display: block;
+        border-left: 3px solid #FF8000;
+        padding-left: 15px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. BANCO DE DADOS
+# 2. BANCO DE DADOS (CONTEÚDO)
 # ==========================================
 perguntas_fase1 = [
     {"id": 1, "tag_A": "E1", "tag_B": "L5", "frase_A": "Preciso ter previsibilidade financeira e controle detalhado sobre os processos antes de dar qualquer passo.", "frase_B": "Prefiro agir alinhado ao meu propósito, confiando que os resultados virão se eu for autêntico."},
@@ -57,10 +91,15 @@ perguntas_fase1 = [
     {"id": 21, "tag_A": "L4", "tag_B": "L6", "frase_A": "Sinto-me mais motivado quando estou resolvendo problemas complexos e descobrindo formas inteligentes de trabalhar.", "frase_B": "Sinto-me mais motivado quando estou desenvolvendo soluções em parceria para gerar impacto positivo."}
 ]
 
+# DICIONÁRIO CORRIGIDO COM AS FRASES COMPLETAS
 cenarios_fase2 = {
-    "N1": "N1 - Fundações Fortes", "N2": "N2 - Conexões Profundas", "N3": "N3 - Alta Performance",
-    "N4": "N4 - Liberdade e Reinvenção", "N5": "N5 - Autenticidade e Significado", 
-    "N6": "N6 - Mentoria e Alianças", "N7": "N7 - Legado e Serviço"
+    "N1": "Construir uma base material e financeira inabalável, garantindo conforto, saúde física e total tranquilidade estrutural para mim e para o meu futuro, sem sobressaltos.",
+    "N2": "Cultivar relacionamentos de alta qualidade, criando um círculo de confiança absoluta, apoio mútuo e harmonia com as pessoas que amo e com quem convivo.",
+    "N3": "Atingir o nível máximo de excelência na minha área, superando metas desafiadoras e sendo amplamente reconhecido pela qualidade e impacto dos resultados que entrego.",
+    "N4": "Ter total autonomia e liberdade para aprender coisas novas, inovar na forma de viver e me reinventar continuamente, rompendo com a rotina e o status quo.",
+    "N5": "Viver de forma totalmente autêntica, alinhando minhas ações diárias aos meus valores mais profundos e sentindo que o meu trabalho reflete quem eu realmente sou.",
+    "N6": "Atuar como um facilitador do sucesso alheio, construindo alianças poderosas, mentorando pessoas e criando ecossistemas onde todos ganham e crescem juntos.",
+    "N7": "Dedicar minha energia a uma causa maior que eu mesmo, deixando uma marca positiva, ética e duradouro na sociedade para as próximas gerações."
 }
 
 escala_opcoes = ["Totalmente A", "Muito A", "Levemente A", "Levemente B", "Muito B", "Totalmente B"]
@@ -75,14 +114,10 @@ if 'respostas_fase2' not in st.session_state: st.session_state.respostas_fase2 =
 if 'dados_cliente' not in st.session_state: st.session_state.dados_cliente = {"nome": "", "email": ""}
 
 def avancar(): st.session_state.etapa += 1
-def reiniciar():
-    st.session_state.etapa = 0
-    st.session_state.respostas_fase1 = {}
-    st.session_state.respostas_fase2 = {k: 0 for k in cenarios_fase2.keys()}
-    st.session_state.dados_cliente = {"nome": "", "email": ""}
+def reiniciar(): st.session_state.etapa = 0; st.session_state.respostas_fase1 = {}; st.session_state.respostas_fase2 = {k: 0 for k in cenarios_fase2.keys()}; st.session_state.dados_cliente = {"nome": "", "email": ""}
 
 # ==========================================
-# 4. SALVAMENTO
+# 4. SALVAMENTO (GSHEETS)
 # ==========================================
 def salvar_dados_gsheets(nome, email, scores, moedas, indices):
     try:
@@ -106,6 +141,7 @@ with st.sidebar:
         st.write(f"**CLIENTE:** {st.session_state.dados_cliente['nome']}")
         if st.button("REINICIAR"): reiniciar(); st.rerun()
 
+# --- TELA 0: LOGIN ---
 if st.session_state.etapa == 0:
     st.markdown("<h1 style='text-align: center;'>RADIOGRAFIA DO MOMENTO</h1>", unsafe_allow_html=True)
     c1, c2, c3 = st.columns([1, 1.5, 1])
@@ -115,8 +151,9 @@ if st.session_state.etapa == 0:
             if st.form_submit_button("COMEÇAR"):
                 if n and e: st.session_state.dados_cliente = {"nome": n, "email": e}; avancar(); st.rerun()
 
+# --- TELA 1: FASE 1 (TENSÕES) ---
 elif st.session_state.etapa == 1:
-    st.markdown("<h2>FASE 1: TENSÕES</h2>", unsafe_allow_html=True)
+    st.markdown("<h2>FASE 1: INVENTÁRIO DE TENSÕES</h2>", unsafe_allow_html=True)
     st.progress(0.33)
     for p in perguntas_fase1:
         st.markdown(f"<div class='question-card'><b>ITEM {p['id']}</b>", unsafe_allow_html=True)
@@ -128,24 +165,46 @@ elif st.session_state.etapa == 1:
         for p in perguntas_fase1: st.session_state.respostas_fase1[p['id']] = st.session_state[f"q_{p['id']}"]
         avancar(); st.rerun()
 
+# --- TELA 2: FASE 2 (VETOR) ---
 elif st.session_state.etapa == 2:
-    st.markdown("<h2>FASE 2: VETOR</h2>", unsafe_allow_html=True)
+    st.markdown("<h2>FASE 2: VETOR DE CRESCIMENTO</h2>", unsafe_allow_html=True)
     st.progress(0.66)
-    tot, z = sum(st.session_state.respostas_fase2.values()), sum(1 for v in st.session_state.respostas_fase2.values() if v == 0)
-    st.markdown(f"Fichas: **{10-tot}** | Zeros: **{z}/3**")
-    for k, lbl in cenarios_fase2.items():
-        st.session_state.respostas_fase2[k] = st.number_input(lbl, 0, 10, st.session_state.respostas_fase2[k], key=f"f2_{k}")
-    if tot == 10 and z >= 3:
-        if st.button("ANALISAR"): avancar(); st.rerun()
+    
+    tot = sum(st.session_state.respostas_fase2.values())
+    z = sum(1 for v in st.session_state.respostas_fase2.values() if v == 0)
+    
+    # Barra Superior de Status
+    c_met1, c_met2 = st.columns(2)
+    c_met1.markdown(f"Fichas Disponíveis: <span style='color:#FF8000; font-size: 24px;'>**{10-tot}**</span>", unsafe_allow_html=True)
+    c_met2.markdown(f"Áreas com Zero: <span style='color:#FF8000; font-size: 24px;'>**{z}/3**</span>", unsafe_allow_html=True)
+    st.divider()
 
+    # LOOP DA FASE 2 COM FRASES COMPLETAS
+    for k, frase in cenarios_fase2.items():
+        st.markdown(f"<span class='fase2-label'>**Cenário {k[1]}**<br>{frase}</span>", unsafe_allow_html=True)
+        st.session_state.respostas_fase2[k] = st.number_input(
+            "Quantidade de fichas:", 0, 10, st.session_state.respostas_fase2[k], key=f"f2_{k}", label_visibility="collapsed"
+        )
+        st.write("") # Espaçamento entre cenários
+
+    if tot == 10 and z >= 3:
+        if st.button("ANALISAR RESULTADOS"): avancar(); st.rerun()
+    else:
+        st.button("DISTRIBUIÇÃO PENDENTE", disabled=True)
+
+# --- TELA 3: DASHBOARD ---
 elif st.session_state.etapa == 3:
     sc = {"L1":0, "L2":0, "L3":0, "L4":0, "L5":0, "L6":0, "L7":0, "E1":0, "E2":0, "E3":0}
     for p in perguntas_fase1:
         idx = escala_opcoes.index(st.session_state.respostas_fase1[p['id']])
         sc[p['tag_A']] += pontos_A[idx]; sc[p['tag_B']] += pontos_B[idx]
+    
     ep, m = (sum([sc['E1'],sc['E2'],sc['E3']])/105)*100, st.session_state.respostas_fase2
     ps = (sum([m['N4'],m['N5'],m['N6'],m['N7']])/10)*100
-    cf = (sum([sc['L1'],sc['L2'],sc['L3']])/3) / ((sum([m['N5'],m['N6'],m['N7']])/3)*10.5) if sum([m['N5'],m['N6'],m['N7']]) > 0 else 99.9
+    
+    base = sum([sc['L1'],sc['L2'],sc['L3']])/3
+    topo = sum([m['N5'],m['N6'],m['N7']])/3
+    cf = base / (topo * 10.5) if topo > 0 else 99.9
     
     st.markdown("<h2 style='text-align: center;'>MASTER ANALYSIS</h2>", unsafe_allow_html=True)
     k1, k2, k3 = st.columns(3)
@@ -154,15 +213,15 @@ elif st.session_state.etapa == 3:
     levels = ['N7', 'N6', 'N5', 'N4', 'N3', 'N2', 'N1']
     v_at = [sc['L7'], sc['L6'], sc['L5'], sc['L4'], sc['L3'], sc['L2'], sc['L1']]
     v_fu = [m['N7']*3.5, m['N6']*3.5, m['N5']*3.5, m['N4']*3.5, m['N3']*3.5, m['N2']*3.5, m['N1']*3.5]
+    
     fig = go.Figure()
-    fig.add_trace(go.Bar(y=levels, x=v_at, name='ATUAL', orientation='h', marker_color='#333333'))
-    fig.add_trace(go.Bar(y=levels, x=v_fu, name='DESEJO', orientation='h', marker_color='#FF8000'))
-    fig.update_layout(template='plotly_dark', barmode='group', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+    fig.add_trace(go.Bar(y=levels, x=v_at, name='REALIDADE ATUAL', orientation='h', marker_color='#333333'))
+    fig.add_trace(go.Bar(y=levels, x=v_fu, name='DESEJO FUTURO', orientation='h', marker_color='#FF8000'))
+    fig.update_layout(template='plotly_dark', barmode='group', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=500)
     st.plotly_chart(fig, use_container_width=True)
 
-    if st.button("SALVAR"):
-        t3 = ", ".join([f"{cenarios_fase2[k]} ({v})" for k,v in sorted(m.items(), key=lambda x:x[1], reverse=True)[:3]])
-        z_tx = ", ".join([cenarios_fase2[k] for k,v in m.items() if v == 0])
+    if st.button("SALVAR E SINCRONIZAR"):
+        t3 = ", ".join([f"N{k[1]} ({v})" for k,v in sorted(m.items(), key=lambda x:x[1], reverse=True)[:3]])
+        z_tx = ", ".join([f"N{k[1]}" for k,v in m.items() if v == 0])
         if salvar_dados_gsheets(st.session_state.dados_cliente['nome'], st.session_state.dados_cliente['email'], sc, m, {"ep": ep, "ps": ps, "cf": cf, "maior_medo": "N/A", "zeros": z_tx, "top3": t3}):
-            st.success("SINCRONIZADO.")
-# FIM DO CODIGO COMPLETO
+            st.success("DADOS SINCRONIZADOS COM SUCESSO.")
