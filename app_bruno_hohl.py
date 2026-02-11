@@ -20,12 +20,11 @@ st.markdown("""
         color: #FFFFFF;
     }
     
-    /* Esconder elementos do Streamlit */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
 
-    /* Customização da Sidebar */
+    /* Sidebar Customizada */
     [data-testid="stSidebar"] {
         background-color: #000000;
         border-right: 1px solid #333333;
@@ -70,19 +69,20 @@ st.markdown("""
         border-radius: 4px;
     }
     
-    /* Texto de Ajuda/Caption */
+    /* Labels dos Inputs */
+    label {
+        color: #FFFFFF !important;
+        font-weight: 600 !important;
+        font-size: 1.1rem !important;
+    }
+    
     .stMarkdown p { color: #CCCCCC; }
     h1, h2, h3 { color: #FFFFFF !important; letter-spacing: -1px; }
-    
-    /* Slider Custom */
-    .stSlider [data-baseweb="slider"] {
-        margin-top: 20px;
-    }
 </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. BANCO DE DADOS (PERGUNTAS)
+# 2. BANCO DE DADOS (PERGUNTAS E CENÁRIOS)
 # ==========================================
 perguntas_fase1 = [
     {"id": 1, "tag_A": "E1", "tag_B": "L5", "frase_A": "Preciso ter previsibilidade financeira e controle detalhado sobre os processos antes de dar qualquer passo.", "frase_B": "Prefiro agir alinhado ao meu propósito, confiando que os resultados virão se eu for autêntico."},
@@ -105,155 +105,4 @@ perguntas_fase1 = [
     {"id": 18, "tag_A": "L4", "tag_B": "L7", "frase_A": "Invisto a maior parte da minha energia em aprender coisas novas e aprimorar minhas próprias habilidades.", "frase_B": "Invisto a maior parte da minha energia em causas que possam gerar um benefício duradouro para a sociedade."},
     {"id": 19, "tag_A": "E3", "tag_B": "L5", "frase_A": "Para mim, é fundamental construir uma imagem profissional forte e ser reconhecido como autoridade.", "frase_B": "Para mim, é fundamental sentir que meu trabalho tem um significado real, independente do reconhecimento."},
     {"id": 20, "tag_A": "E1", "tag_B": "L2", "frase_A": "Prefiro poupar e acumular recursos financeiros como uma reserva de segurança rigorosa para o meu futuro.", "frase_B": "Prefiro utilizar parte dos meus recursos financeiros para fortalecer laços com as pessoas importantes."},
-    {"id": 21, "tag_A": "L4", "tag_B": "L6", "frase_A": "Sinto-me mais motivado quando estou resolvendo problemas complexos e descobrindo formas inteligentes de trabalhar.", "frase_B": "Sinto-me mais motivado quando estou desenvolvendo soluções em parceria para gerar impacto positivo."}
-]
-
-cenarios_fase2 = {
-    "N1": "Fundações Fortes", "N2": "Conexões Profundas", "N3": "Alta Performance",
-    "N4": "Liberdade e Reinvenção", "N5": "Autenticidade e Significado", 
-    "N6": "Mentoria e Alianças", "N7": "Legado e Serviço"
-}
-
-escala_opcoes = ["Totalmente A", "Muito A", "Levemente A", "Levemente B", "Muito B", "Totalmente B"]
-pontos_A = [5, 4, 3, 2, 1, 0]
-pontos_B = [0, 1, 2, 3, 4, 5]
-
-# ==========================================
-# 3. LOGICA E ESTADO
-# ==========================================
-if 'etapa' not in st.session_state: st.session_state.etapa = 0
-if 'respostas_fase1' not in st.session_state: st.session_state.respostas_fase1 = {}
-if 'respostas_fase2' not in st.session_state: st.session_state.respostas_fase2 = {k: 0 for k in cenarios_fase2.keys()}
-if 'dados_cliente' not in st.session_state: st.session_state.dados_cliente = {"nome": "", "email": ""}
-
-def avancar(): st.session_state.etapa += 1
-def reiniciar():
-    st.session_state.etapa = 0
-    st.session_state.respostas_fase1 = {}
-    st.session_state.respostas_fase2 = {k: 0 for k in cenarios_fase2.keys()}
-    st.session_state.dados_cliente = {"nome": "", "email": ""}
-
-# ==========================================
-# 4. SALVAMENTO (GSHEETS)
-# ==========================================
-def salvar_dados_gsheets(nome, email, scores, moedas, indices):
-    try:
-        secrets_dict = dict(st.secrets["connections"]["gsheets"])
-        if "private_key" in secrets_dict:
-            secrets_dict["private_key"] = secrets_dict["private_key"].replace("\\n", "\n")
-        scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-        creds = Credentials.from_service_account_info(secrets_dict, scopes=scopes)
-        client = gspread.authorize(creds)
-        url = st.secrets["connections"]["gsheets"]["spreadsheet"]
-        sheet = client.open_by_url(url).sheet1
-        nova_linha = [datetime.now().strftime("%Y-%m-%d %H:%M:%S"), nome, email, f"{indices['ep']:.1f}%", f"{indices['ps']:.0f}%", f"{indices['cf']:.2f}", indices['maior_medo'], str(indices['zeros']), str(indices['top3'])]
-        sheet.append_row(nova_linha)
-        return True
-    except Exception:
-        traceback.print_exc()
-        return False
-
-# ==========================================
-# 5. SIDEBAR
-# ==========================================
-with st.sidebar:
-    st.markdown("<h1 style='color:#FF8000; font-size:24px;'>BRUNO HOHL</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#888; font-size:12px;'>ASSESSMENT DE CONSCIÊNCIA</p>", unsafe_allow_html=True)
-    st.divider()
-    if st.session_state.etapa > 0:
-        st.markdown(f"**USUÁRIO:**<br>{st.session_state.dados_cliente['nome']}", unsafe_allow_html=True)
-        st.divider()
-        if st.button("REINICIAR"): reiniciar(); st.rerun()
-
-# ==========================================
-# 6. TELAS
-# ==========================================
-
-# --- TELA 0: LOGIN ---
-if st.session_state.etapa == 0:
-    st.markdown("<h1 style='text-align: center;'>RADIOGRAFIA DO MOMENTO</h1>", unsafe_allow_html=True)
-    st.write("")
-    c1, c2, c3 = st.columns([1, 1.5, 1])
-    with c2:
-        with st.form("login"):
-            n = st.text_input("NOME COMPLETO")
-            e = st.text_input("E-MAIL")
-            if st.form_submit_button("INICIAR DIAGNÓSTICO"):
-                if n and e:
-                    st.session_state.dados_cliente = {"nome": n, "email": e}
-                    avancar(); st.rerun()
-
-# --- TELA 1: FASE 1 ---
-elif st.session_state.etapa == 1:
-    st.markdown("<h2>FASE 1: INVENTÁRIO DE TENSÕES</h2>", unsafe_allow_html=True)
-    st.progress(0.33)
-    st.write("Mova o seletor para a frase que melhor descreve sua **vida real hoje**.")
-    
-    for p in perguntas_fase1:
-        st.markdown(f"<div class='question-card'>", unsafe_allow_html=True)
-        st.markdown(f"**ITEM {p['id']} DE 21**")
-        col_a, col_b = st.columns(2)
-        with col_a: st.markdown(f"<small style='color:#888;'>OPÇÃO A</small><br>{p['frase_A']}", unsafe_allow_html=True)
-        with col_b: st.markdown(f"<small style='color:#888;'>OPÇÃO B</small><br>{p['frase_B']}", unsafe_allow_html=True)
-        st.select_slider(" ", options=escala_opcoes, value="Levemente A", key=f"q_{p['id']}", label_visibility="collapsed")
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    if st.button("PROSSEGUIR PARA FASE 2"):
-        for p in perguntas_fase1: st.session_state.respostas_fase1[p['id']] = st.session_state[f"q_{p['id']}"]
-        avancar(); st.rerun()
-
-# --- TELA 2: FASE 2 ---
-elif st.session_state.etapa == 2:
-    st.markdown("<h2>FASE 2: VETOR DE CRESCIMENTO</h2>", unsafe_allow_html=True)
-    st.progress(0.66)
-    
-    total = sum(st.session_state.respostas_fase2.values())
-    zeros = sum(1 for v in st.session_state.respostas_fase2.values() if v == 0)
-    
-    st.markdown(f"### DISTRIBUA 10 FICHAS (DISPONÍVEIS: <span style='color:#FF8000;'>{10-total}</span>)", unsafe_allow_html=True)
-    st.markdown(f"ÁREAS COM ZERO: **{zeros}/3** (MÍNIMO 3)")
-    
-    for k, v in cenarios_fase2.items():
-        st.session_state.respostas_fase2[k] = st.number_input(f"{v}", 0, 10, st.session_state.respostas_fase2[k], key=f"f2_{k}")
-    
-    if total == 10 and zeros >= 3:
-        if st.button("GERAR ANÁLISE"): avancar(); st.rerun()
-    else:
-        st.button("DISTRIBUIÇÃO PENDENTE", disabled=True)
-
-# --- TELA 3: DASHBOARD ---
-elif st.session_state.etapa == 3:
-    # Cálculos
-    scores = {"L1":0, "L2":0, "L3":0, "L4":0, "L5":0, "L6":0, "L7":0, "E1":0, "E2":0, "E3":0}
-    for p in perguntas_fase1:
-        idx = escala_opcoes.index(st.session_state.respostas_fase1[p['id']])
-        scores[p['tag_A']] += pontos_A[idx]; scores[p['tag_B']] += pontos_B[idx]
-    
-    i_ep = ((scores['E1'] + scores['E2'] + scores['E3']) / 105) * 100
-    moedas = st.session_state.respostas_fase2
-    i_ps = ((moedas['N4'] + moedas['N5'] + moedas['N6'] + moedas['N7']) / 10) * 100
-    i_cf = (scores['L1']+scores['L2']+scores['L3'])/3 / ((moedas['N5']+moedas['N6']+moedas['N7'])/3 * 10.5) if (moedas['N5']+moedas['N6']+moedas['N7']) > 0 else 99.9
-
-    st.markdown("<h2 style='text-align: center;'>MASTER ANALYSIS</h2>", unsafe_allow_html=True)
-    st.divider()
-    
-    k1, k2, k3 = st.columns(3)
-    k1.metric("ENTROPIA", f"{i_ep:.1f}%")
-    k2.metric("PRONTIDÃO", f"{i_ps:.0f}%")
-    k3.metric("SUSTENTABILIDADE", f"{i_cf:.2f}")
-
-    # Gráfico Ampulheta
-    fator = 3.5
-    levels = ['N7', 'N6', 'N5', 'N4', 'N3', 'N2', 'N1']
-    v_atual = [scores['L7'], scores['L6'], scores['L5'], scores['L4'], scores['L3'], scores['L2'], scores['L1']]
-    v_fut = [moedas['N7']*fator, moedas['N6']*fator, moedas['N5']*fator, moedas['N4']*fator, moedas['N3']*fator, moedas['N2']*fator, moedas['N1']*fator]
-    
-    fig = go.Figure()
-    fig.add_trace(go.Bar(y=levels, x=v_atual, name='ATUAL', orientation='h', marker_color='#333333'))
-    fig.add_trace(go.Bar(y=levels, x=v_fut, name='DESEJO', orientation='h', marker_color='#FF8000'))
-    fig.update_layout(template='plotly_dark', barmode='group', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-    st.plotly_chart(fig, use_container_width=True)
-
-    if st.button("SALVAR NA NUVEM"):
-        if salvar_dados_gsheets(st.session_state.dados_cliente['nome'], st.session_state.dados_cliente['email'], scores, moedas, {"ep": i_ep, "ps": i_ps, "cf": i_cf, "maior_medo": "N/A", "zeros": "N/A", "top3": "N/A"}):
-            st.success("DADOS SINCRONIZADOS.")
+    {"id": 21, "tag_A": "
